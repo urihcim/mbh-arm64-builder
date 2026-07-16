@@ -73,7 +73,7 @@ jobs:
 
       - name: Build
         env:
-          RUSTFLAGS: -C linker=${GNU_TARGET}-gcc
+          RUSTFLAGS: -C linker=${{ env.GNU_TARGET }}-gcc
         run: cargo build --release --target ${RUST_TARGET}
 
       - name: Rename binary
