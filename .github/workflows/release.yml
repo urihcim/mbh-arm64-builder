@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-mbh
+  cancel-in-progress: true
+
+env:
+  UPSTREAM: Cennac2/minecraft_bedrock_hibernation
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release_check.outputs.tag }}
+      already_published: ${{ steps.release_check.outputs.already_published }}
+    env:
+      UPSTREAM_RELEASE: https://api.github.com/repos/${UPSTREAM}/releases/latest
+      OWN_RELEASE: https://api.github.com/repos/${{ github.repository }}/releases/latest
+    steps:
+      - name: Check upstream release status
+        id: release_check
+        run: |
+          set -euo pipefail
+
+          upstream_tag=$(curl -fsSL "${UPSTREAM_RELEASE}" | jq -r '.tag_name')
+          if [ -z "$upstream_tag" ] || [ "$upstream_tag" = "null" ]; then
+            echo "No upstream release found" >&2
+            exit 1
+          fi
+
+          own_tag=$(curl -fsSL "${OWN_RELEASE}" | jq -r '.tag_name')
+          if [ -z "$own_tag" ] || [ "$own_tag" = "null" ]; then
+            own_tag=""
+          fi
+
+          if [ "$own_tag" = "$upstream_tag" ]; then
+            already_published=true
+          else
+            already_published=false
+          fi
+
+          echo "tag=$upstream_tag" >> "$GITHUB_OUTPUT"
+          echo "already_published=$already_published" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    if: needs.check.outputs.already_published != 'true'
+    runs-on: ubuntu-latest
+
+    env:
+      RUST_TARGET: aarch64-unknown-linux-musl
+      GNU_TARGET: aarch64-linux-gnu
+
+    steps:
+      - name: Checkout upstream at tag
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: ${{ env.UPSTREAM }}
+          ref: ${{ needs.check.outputs.tag }}
+
+      - name: Install cross compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-${GNU_TARGET}
+
+      - name: Install Rust target
+        run: rustup target add ${RUST_TARGET}
+
+      - name: Build
+        env:
+          RUSTFLAGS: -C linker=${GNU_TARGET}-gcc
+        run: cargo build --release --target ${RUST_TARGET}
+
+      - name: Rename binary
+        run: |
+          mv target/${RUST_TARGET}/release/minecraft_bedrock_hibernation mbh-linux-aarch64
+
+      - name: Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ needs.check.outputs.tag }}
+          files: |
+            mbh-linux-aarch64
