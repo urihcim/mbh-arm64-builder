@@ -33,7 +33,7 @@ jobs:
             exit 1
           fi
 
-          own_tag=$(curl -fsSL "${OWN_RELEASE}" | jq -r '.tag_name')
+          own_tag=$(curl -sSL "${OWN_RELEASE}" | jq -r '.tag_name')
           if [ -z "$own_tag" ] || [ "$own_tag" = "null" ]; then
             own_tag=""
           fi
