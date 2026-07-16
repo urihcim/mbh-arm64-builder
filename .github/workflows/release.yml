@@ -12,9 +12,6 @@ concurrency:
   group: release-mbh
   cancel-in-progress: true
 
-env:
-  UPSTREAM: Cennac2/minecraft_bedrock_hibernation
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -22,7 +19,7 @@ jobs:
       tag: ${{ steps.release_check.outputs.tag }}
       already_published: ${{ steps.release_check.outputs.already_published }}
     env:
-      UPSTREAM_RELEASE: https://api.github.com/repos/${{ env.UPSTREAM }}/releases/latest
+      UPSTREAM_RELEASE: https://api.github.com/repos/Cennac2/minecraft_bedrock_hibernation/releases/latest
       OWN_RELEASE: https://api.github.com/repos/${{ github.repository }}/releases/latest
     steps:
       - name: Check upstream release status
@@ -63,7 +60,7 @@ jobs:
       - name: Checkout upstream at tag
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          repository: ${{ env.UPSTREAM }}
+          repository: Cennac2/minecraft_bedrock_hibernation
           ref: ${{ needs.check.outputs.tag }}
 
       - name: Install cross compiler
